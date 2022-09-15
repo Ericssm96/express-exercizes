@@ -1,24 +1,81 @@
 const express = require('express');
 const app = express();
-const logger = require('./logger');
+let {people} = require('./data');
 
-app.use(logger);
+app.use(express.static('./methods-public'));
 
-app.get('/', (req, res)=>{
-    res.send('Home Page');
-});
+// Parse form data
+app.use(express.urlencoded({extended: false}));
 
-app.get('/about', (req, res)=>{
-    res.send('About Page');
-});
+// Parse JSON
+app.use(express.json());
 
-app.get('/api/products', (req, res)=>{
-    res.json({message: "Hi"});
+app.post('/api/people', (req, res) => {
+    const {name} = req.body;
+    if(!name) {
+        res.status(400).json({success: false, msg: "Please provide a name."})
+    }
+    res.status(201).json({success: true, person: name});
 })
 
-app.get('/api/items', (req, res)=>{
-    res.json({message: "Hello"});
+app.post('/api/postman/people', (req, res)=>{
+    const {name} = req.body;
+    if(!name) {
+        res.status(400).json({success: false, msg: "Please provide a name."})
+    }
+    res.status(201).json({success: true, data: [...people, name]});
+});
+
+app.put('/api/people/:id', (req, res)=>{
+    const {id} = req.params;
+    const {name} = req.body;
+    // console.log(id, name);
+    const person = people.find(person=>{
+        return person.id === Number(id);
+    })
+
+    if(!person) {
+        res.status(404).json({success: false, msg: "This id doesn't match any person stored in the data."})
+    }
+
+    const newPeople = people.map(person => {
+        if(person.id === Number(id)){
+            person.name = name;
+        }
+        return person;
+    });
+
+    res.status(200).json({success: true, data: newPeople});
+});
+
+app.delete('/api/people/:id', (req, res)=>{
+    const person = people.find(person=>{
+        return person.id === Number(req.params.id);
+    })
+
+    if(!person) {
+        return res.status(404).json({success: false, msg: `This id (${req.params.id}) doesn't match any person stored in the data.`})
+    }
+
+    const newPeople = people.filter(person => person.id !== Number(req.params.id));
+
+    return res.status(200).json({success: true, data: newPeople})
 })
+
+app.post('/login', (req, res)=>{
+    const {name} = req.body;
+
+    if(name){
+        return res.status(200).send(`Welcome, ${name}.`);
+    }
+
+    res.status(400).send("No user provided.");
+})
+
+app.get('/api/people', (req, res)=>{
+    res.status(200).json({success: true, data: people})
+})
+
 
 app.listen(5000, () => {
     console.log("Server running on port 5000.");
